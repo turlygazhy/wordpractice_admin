@@ -1,16 +1,24 @@
-# wordpractice_admin
+# Обновление GitHub Pages для Flutter Web
 
-A new Flutter project.
+Эта инструкция описывает, как обновлять сайт Flutter Web, размещённый на GitHub Pages.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## Шаг 1. Сборка Flutter Web
 
-A few resources to get you started if this is your first Flutter project:
+В корне проекта выполните команду:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+flutter build web --base-href /wordpractice_admin/
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Шаг 2. Копирование билда в папку docs
+
+GitHub Pages настроен на ветку main → папка /docs.
+
+rm -rf docs/*
+cp -r build/web/* docs/
+
+
+Все файлы из build/web должны оказаться сразу в docs/
+
+Не оставляйте вложенную папку web внутри docs, иначе GitHub Pages не найдёт index.html
