@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 // Conditional import for web audio
 import 'audio_player_web_stub.dart'
     if (dart.library.html) 'audio_player_web.dart' as web_audio;
+
+// Conditional import for web HTML elements
+import 'dart:html' as html;
+import 'dart:ui_web' as ui_web;
 
 /// Screen for displaying course details
 /// Accepts courseId to fetch and display course information
@@ -330,6 +335,141 @@ class _WordCardState extends State<WordCard> {
       );
     }
 
+    // Clean and validate URL
+    final cleanUrl = imageUrl.trim();
+    if (cleanUrl.isEmpty) {
+      return Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.image_not_supported, color: Colors.grey),
+      );
+    }
+
+    // For web platform, try using HTML img element directly
+    if (kIsWeb) {
+      return _buildWebImage(cleanUrl);
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: CachedNetworkImage(
+        imageUrl: cleanUrl,
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+        httpHeaders: const {
+          'Accept': 'image/*',
+        },
+        memCacheWidth: 100,
+        memCacheHeight: 100,
+        maxWidthDiskCache: 200,
+        maxHeightDiskCache: 200,
+        imageBuilder: (context, imageProvider) {
+          return Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              image: DecorationImage(
+                image: imageProvider,
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+        },
+        placeholder: (context, url) => Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+        errorWidget: (context, url, error) {
+          // Log error for debugging
+          debugPrint('Image load error for URL: $cleanUrl');
+          debugPrint('Error type: ${error.runtimeType}');
+          debugPrint('Error: $error');
+          
+          // Try fallback with Image.network
+          return _buildFallbackImage(cleanUrl);
+        },
+        fadeInDuration: const Duration(milliseconds: 200),
+        fadeOutDuration: const Duration(milliseconds: 100),
+      ),
+    );
+  }
+
+  /// Builds image widget for web platform using HTML img element
+  Widget _buildWebImage(String imageUrl) {
+    if (!kIsWeb) {
+      return _buildFallbackImage(imageUrl);
+    }
+
+    // Use HTML img element directly for web to avoid CORS issues
+    try {
+      return _buildHtmlImage(imageUrl);
+    } catch (e) {
+      debugPrint('Error creating HTML image: $e');
+      return _buildFallbackImage(imageUrl);
+    }
+  }
+
+  /// Builds image using HTML img element via platform view
+  Widget _buildHtmlImage(String imageUrl) {
+    if (!kIsWeb) {
+      return _buildFallbackImage(imageUrl);
+    }
+
+    // Create a unique view ID
+    final viewId = 'image_${widget.index}_${imageUrl.hashCode}';
+    
+    // Register platform view
+    ui_web.platformViewRegistry.registerViewFactory(
+      viewId,
+      (int viewId) {
+        final img = html.ImageElement()
+          ..src = imageUrl
+          ..style.width = '100px'
+          ..style.height = '100px'
+          ..style.objectFit = 'cover'
+          ..style.borderRadius = '8px'
+          ..onError.listen((_) {
+            debugPrint('HTML image load error for: $imageUrl');
+          });
+        return img;
+      },
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 100,
+        height: 100,
+        child: HtmlElementView(viewType: viewId),
+      ),
+    );
+  }
+
+  /// Builds fallback image widget using Image.network with different approach
+  Widget _buildFallbackImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.broken_image, color: Colors.grey),
+      );
+    }
+    
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
@@ -337,7 +477,10 @@ class _WordCardState extends State<WordCard> {
         width: 100,
         height: 100,
         fit: BoxFit.cover,
+        filterQuality: FilterQuality.low,
         errorBuilder: (context, error, stackTrace) {
+          debugPrint('Fallback image also failed: $error');
+          debugPrint('Stack trace: $stackTrace');
           return Container(
             width: 100,
             height: 100,
@@ -345,7 +488,21 @@ class _WordCardState extends State<WordCard> {
               color: Colors.grey.shade200,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.broken_image, color: Colors.grey),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.broken_image, color: Colors.grey, size: 32),
+                const SizedBox(height: 4),
+                Text(
+                  'Ошибка\nзагрузки',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
           );
         },
         loadingBuilder: (context, child, loadingProgress) {
@@ -358,14 +515,6 @@ class _WordCardState extends State<WordCard> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Center(child: CircularProgressIndicator()),
-          );
-        },
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (wasSynchronouslyLoaded) return child;
-          return AnimatedOpacity(
-            opacity: frame == null ? 0 : 1,
-            duration: const Duration(milliseconds: 200),
-            child: child,
           );
         },
       ),
