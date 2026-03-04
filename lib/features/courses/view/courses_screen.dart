@@ -4,6 +4,7 @@ import 'package:wordpractice_admin/features/courses/providers.dart';
 import 'package:wordpractice_admin/features/courses/state/course_models.dart';
 import 'package:wordpractice_admin/features/courses/widgets/course_list_item_widget.dart';
 import 'package:wordpractice_admin/features/courses/view/course_details_screen.dart';
+import 'package:wordpractice_admin/services/course_service.dart';
 
 /// Screen for displaying and managing list of courses.
 /// Uses MVVM with Riverpod and CourseService as data source.
@@ -183,9 +184,12 @@ class CoursesScreen extends ConsumerWidget {
         }
       } catch (e) {
         if (context.mounted) {
+          final message = e is DuplicateCourseTitleException
+              ? e.toString()
+              : 'Ошибка при создании курса: $e';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Ошибка при создании курса: $e'),
+              content: Text(message),
               backgroundColor: Colors.red,
             ),
           );

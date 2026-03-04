@@ -5,6 +5,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:meta/meta.dart';
 import 'package:wordpractice_admin/features/courses/state/course_models.dart';
 
+/// Thrown when creating a course whose title already exists in the collection.
+/// Used to show "нельзя дублировать названия курсов" in UI.
+class DuplicateCourseTitleException implements Exception {
+  @override
+  String toString() => 'Нельзя дублировать названия курсов';
+}
+
 /// Immutable value object for word media payload.
 /// Holds raw bytes and content types for upload.
 @immutable
@@ -50,13 +57,25 @@ class CourseService {
 
   /// Creates a new course document with generated id and default fields.
   /// Uses Firestore generated id as both document id and field `id`.
+  /// Throws [DuplicateCourseTitleException] if a course with the same title already exists.
   Future<void> createCourse(String title) async {
+    final snapshot = await _coursesRef
+        .where('description', isEqualTo: 'Базовый арабский')
+        .get();
+
+    final normalizedTitle = title.trim();
+    final duplicate = snapshot.docs.any((doc) =>
+        (doc.data()['title'] as String? ?? '').trim() == normalizedTitle);
+    if (duplicate) {
+      throw DuplicateCourseTitleException();
+    }
+
     final docRef = _coursesRef.doc();
     final courseId = docRef.id;
 
     final data = Course(
       id: courseId,
-      title: title,
+      title: normalizedTitle,
       description: 'Базовый арабский',
       displayed: false,
       icon: '',
