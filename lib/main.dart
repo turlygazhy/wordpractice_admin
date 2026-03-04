@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:wordpractice_admin/courses_screen.dart';
 
@@ -14,7 +15,7 @@ void main() async {
       appId: "1:712994301412:web:ec52e84c9624b28c2393f1",
     ),
   );
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
