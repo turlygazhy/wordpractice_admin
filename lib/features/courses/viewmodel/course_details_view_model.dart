@@ -82,6 +82,38 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     state = state.copyWith(isSavingWord: false);
   }
 
+  /// Updates course metadata such as title and displayed flag.
+  /// Delegates to service and keeps other fields unchanged.
+  Future<void> updateCourseMeta({
+    String? title,
+    bool? displayed,
+  }) async {
+    if ((title == null || title.trim().isEmpty) && displayed == null) {
+      return;
+    }
+    try {
+      await _service.updateCourseMeta(
+        id: _courseId,
+        title: title?.trim(),
+        displayed: displayed,
+      );
+    } catch (e) {
+      state = state.copyWith(error: e);
+      rethrow;
+    }
+  }
+
+  /// Deletes current course document by id.
+  /// Leaves media files untouched.
+  Future<void> deleteCourse() async {
+    try {
+      await _service.deleteCourse(_courseId);
+    } catch (e) {
+      state = state.copyWith(error: e);
+      rethrow;
+    }
+  }
+
   /// Updates existing word by index.
   /// Optionally accepts new media bytes to replace previous media.
   Future<void> updateWord({

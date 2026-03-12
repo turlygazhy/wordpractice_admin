@@ -9,18 +9,18 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class WordFormResult {
   final String arabic;
   final String translation;
-  final Uint8List audioBytes;
-  final String audioContentType;
-  final Uint8List imageBytes;
-  final String imageContentType;
+  final Uint8List? audioBytes;
+  final String? audioContentType;
+  final Uint8List? imageBytes;
+  final String? imageContentType;
 
   const WordFormResult({
     required this.arabic,
     required this.translation,
-    required this.audioBytes,
-    required this.audioContentType,
-    required this.imageBytes,
-    required this.imageContentType,
+    this.audioBytes,
+    this.audioContentType,
+    this.imageBytes,
+    this.imageContentType,
   });
 }
 
@@ -29,11 +29,13 @@ class WordFormResult {
 class WordFormDialogWidget extends StatefulWidget {
   final String? initialArabic;
   final String? initialTranslation;
+  final bool requireMedia;
 
   const WordFormDialogWidget({
     super.key,
     this.initialArabic,
     this.initialTranslation,
+    this.requireMedia = true,
   });
 
   @override
@@ -90,12 +92,14 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
       _translationError = 'Обязательно';
       hasError = true;
     }
-    if (_audioBytes == null ||
-        _audioContentType == null ||
-        _imageBytes == null ||
-        _imageContentType == null) {
-      _mediaError = 'Аудио и картинка обязательны';
-      hasError = true;
+    if (widget.requireMedia) {
+      if (_audioBytes == null ||
+          _audioContentType == null ||
+          _imageBytes == null ||
+          _imageContentType == null) {
+        _mediaError = 'Аудио и картинка обязательны';
+        hasError = true;
+      }
     }
 
     if (hasError) {
@@ -107,10 +111,10 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
       WordFormResult(
         arabic: arabic,
         translation: translation,
-        audioBytes: _audioBytes!,
-        audioContentType: _audioContentType!,
-        imageBytes: _imageBytes!,
-        imageContentType: _imageContentType!,
+        audioBytes: _audioBytes,
+        audioContentType: _audioContentType,
+        imageBytes: _imageBytes,
+        imageContentType: _imageContentType,
       ),
     );
   }

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wordpractice_admin/features/courses/providers.dart';
@@ -29,7 +27,6 @@ class CourseDetailsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: _buildAppBar(context, state.course),
-      floatingActionButton: _buildFab(context, ref),
       body: _buildBody(context, state),
     );
   }
@@ -38,7 +35,12 @@ class CourseDetailsScreen extends ConsumerWidget {
   /// Shows course name when available.
   PreferredSizeWidget _buildAppBar(BuildContext context, Course? course) {
     return AppBar(
-      title: Text(course?.title ?? 'Детали курса'),
+      title: Text(course?.title.isNotEmpty == true
+          ? course!.title
+          : 'Детали курса'),
+      actions: [
+        if (course != null) _buildDeleteCourseButton(context),
+      ],
     );
   }
 
@@ -85,13 +87,15 @@ class CourseDetailsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildTitleSection(course),
+          _buildTitleSection(context, course),
           const SizedBox(height: 16),
           _buildDescriptionSection(course),
           const SizedBox(height: 16),
-          _buildDisplayedStatusSection(course),
+          _buildDisplayedStatusSection(context, course),
           const SizedBox(height: 24),
           if (isSavingWord) _buildSavingIndicator(),
+          _buildAddWordButton(),
+          const SizedBox(height: 8),
           _buildWordsListSection(course),
         ],
       ),
@@ -100,13 +104,28 @@ class CourseDetailsScreen extends ConsumerWidget {
 
   /// Builds title text section for course.
   /// Shows generic placeholder when title is empty.
-  Widget _buildTitleSection(Course course) {
-    return Text(
-      course.title.isEmpty ? 'Без названия' : course.title,
-      style: const TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-      ),
+  Widget _buildTitleSection(BuildContext context, Course course) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            course.title.isEmpty ? 'Без названия' : course.title,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => _onEditCourseMetaPressed(
+            context,
+            initialTitle: course.title,
+            initialDisplayed: course.displayed,
+          ),
+          child: const Text('Редактировать'),
+        ),
+      ],
     );
   }
 
@@ -121,7 +140,7 @@ class CourseDetailsScreen extends ConsumerWidget {
 
   /// Builds displayed status row with label and chip.
   /// Uses green and red backgrounds for boolean state.
-  Widget _buildDisplayedStatusSection(Course course) {
+  Widget _buildDisplayedStatusSection(BuildContext context, Course course) {
     return Row(
       children: [
         const Text(
@@ -132,6 +151,14 @@ class CourseDetailsScreen extends ConsumerWidget {
           label: Text(course.displayed ? 'Да' : 'Нет'),
           backgroundColor:
               course.displayed ? Colors.green.shade100 : Colors.red.shade100,
+        ),
+        const SizedBox(width: 8),
+        TextButton(
+          onPressed: () => _onEditCourseDisplayedPressed(
+            context,
+            currentDisplayed: course.displayed,
+          ),
+          child: const Text('Редактировать'),
         ),
       ],
     );
@@ -153,6 +180,23 @@ class CourseDetailsScreen extends ConsumerWidget {
           Text('Сохранение слова...'),
         ],
       ),
+    );
+  }
+
+  /// Builds "add word" button inside words block.
+  /// Uses Consumer to access Riverpod ref for action handler.
+  Widget _buildAddWordButton() {
+    return Consumer(
+      builder: (context, ref, _) {
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: ElevatedButton.icon(
+            onPressed: () => _onAddWordPressed(context, ref),
+            icon: const Icon(Icons.add),
+            label: const Text('Добавить слово'),
+          ),
+        );
+      },
     );
   }
 
@@ -203,7 +247,7 @@ class CourseDetailsScreen extends ConsumerWidget {
     );
   }
 
-  /// Handles FAB press for adding new word.
+  /// Handles add word button press.
   /// Shows word form dialog and passes result to view model.
   Future<void> _onAddWordPressed(
     BuildContext context,
@@ -217,15 +261,21 @@ class CourseDetailsScreen extends ConsumerWidget {
     if (result == null) return;
 
     try {
+      if (result.audioBytes == null ||
+          result.audioContentType == null ||
+          result.imageBytes == null ||
+          result.imageContentType == null) {
+        throw StateError('Media must be provided when creating a word');
+      }
       final notifier =
           ref.read(courseDetailsViewModelProvider(courseId).notifier);
       await notifier.addWord(
         arabic: result.arabic,
         translation: result.translation,
-        audioBytes: result.audioBytes,
-        audioContentType: result.audioContentType,
-        imageBytes: result.imageBytes,
-        imageContentType: result.imageContentType,
+        audioBytes: result.audioBytes!,
+        audioContentType: result.audioContentType!,
+        imageBytes: result.imageBytes!,
+        imageContentType: result.imageContentType!,
       );
 
       if (context.mounted) {
@@ -249,82 +299,20 @@ class CourseDetailsScreen extends ConsumerWidget {
   }
 
   /// Handles edit action for existing word.
-  /// Shows simple text-only dialog without media change.
+  /// Shows dialog that allows changing text and optionally media.
   Future<void> _onEditWordPressed(
     BuildContext context,
     WidgetRef ref,
     int index,
     CourseWord word,
   ) async {
-    final arabicController = TextEditingController(text: word.arabic);
-    final translationController =
-        TextEditingController(text: word.translation);
-    String? arabicError;
-    String? translationError;
-
-    final result = await showDialog<({String arabic, String translation})>(
+    final result = await showDialog<WordFormResult>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Редактировать слово'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: arabicController,
-                    decoration: InputDecoration(
-                      labelText: 'Арабский',
-                      border: const OutlineInputBorder(),
-                      errorText: arabicError,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: translationController,
-                    decoration: InputDecoration(
-                      labelText: 'Перевод',
-                      border: const OutlineInputBorder(),
-                      errorText: translationError,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Отмена'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final arabic = arabicController.text.trim();
-                    final translation = translationController.text.trim();
-                    var hasError = false;
-                    if (arabic.isEmpty) {
-                      arabicError = 'Обязательно';
-                      hasError = true;
-                    }
-                    if (translation.isEmpty) {
-                      translationError = 'Обязательно';
-                      hasError = true;
-                    }
-                    if (hasError) {
-                      setState(() {});
-                      return;
-                    }
-                    Navigator.pop(
-                      context,
-                      (arabic: arabic, translation: translation),
-                    );
-                  },
-                  child: const Text('Сохранить'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (context) => WordFormDialogWidget(
+        initialArabic: word.arabic,
+        initialTranslation: word.translation,
+        requireMedia: false,
+      ),
     );
 
     if (result == null) return;
@@ -336,6 +324,10 @@ class CourseDetailsScreen extends ConsumerWidget {
         index: index,
         arabic: result.arabic,
         translation: result.translation,
+        audioBytes: result.audioBytes,
+        audioContentType: result.audioContentType,
+        imageBytes: result.imageBytes,
+        imageContentType: result.imageContentType,
       );
 
       if (context.mounted) {
@@ -410,6 +402,234 @@ class CourseDetailsScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка при удалении слова: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Builds delete course button for app bar actions.
+  /// Shows confirmation dialog before deletion.
+  Widget _buildDeleteCourseButton(BuildContext context) {
+    return TextButton(
+      onPressed: () => _onDeleteCoursePressed(context),
+      child: const Text(
+        'Удалить курс',
+        style: TextStyle(color: Colors.red),
+      ),
+    );
+  }
+
+  /// Handles edit of both title and displayed flag in a single dialog.
+  /// Uses view model to persist changes to Firestore.
+  Future<void> _onEditCourseMetaPressed(
+    BuildContext context, {
+    required String initialTitle,
+    required bool initialDisplayed,
+  }) async {
+    final titleController = TextEditingController(text: initialTitle);
+    var displayed = initialDisplayed;
+    String? titleError;
+
+    final result = await showDialog<({String title, bool displayed})>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Редактировать курс'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                      labelText: 'Название курса',
+                      border: const OutlineInputBorder(),
+                      errorText: titleError,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Отображать курс'),
+                      const SizedBox(width: 8),
+                      Switch(
+                        value: displayed,
+                        onChanged: (value) {
+                          setState(() {
+                            displayed = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Отмена'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final title = titleController.text.trim();
+                    if (title.isEmpty) {
+                      setState(() {
+                        titleError = 'Название обязательно';
+                      });
+                      return;
+                    }
+                    Navigator.pop(
+                      context,
+                      (title: title, displayed: displayed),
+                    );
+                  },
+                  child: const Text('Сохранить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    final ref = ProviderScope.containerOf(context).read;
+    try {
+      final notifier =
+          ref(courseDetailsViewModelProvider(courseId).notifier);
+      await notifier.updateCourseMeta(
+        title: result.title,
+        displayed: result.displayed,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Курс обновлён'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при обновлении курса: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Handles quick edit for displayed flag only.
+  /// Keeps title unchanged.
+  Future<void> _onEditCourseDisplayedPressed(
+    BuildContext context, {
+    required bool currentDisplayed,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        var displayed = currentDisplayed;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Статус отображения'),
+              content: Row(
+                children: [
+                  const Text('Отображать курс'),
+                  const SizedBox(width: 8),
+                  Switch(
+                    value: displayed,
+                    onChanged: (value) {
+                      setState(() {
+                        displayed = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Отмена'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, displayed),
+                  child: const Text('Сохранить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    final ref = ProviderScope.containerOf(context).read;
+    try {
+      final notifier =
+          ref(courseDetailsViewModelProvider(courseId).notifier);
+      await notifier.updateCourseMeta(displayed: result);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при обновлении статуса: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Handles deletion of entire course from details screen.
+  /// On success navigates back to courses list.
+  Future<void> _onDeleteCoursePressed(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить курс'),
+        content: const Text(
+          'Вы действительно хотите удалить этот курс? Это действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final ref = ProviderScope.containerOf(context).read;
+    try {
+      final notifier =
+          ref(courseDetailsViewModelProvider(courseId).notifier);
+      await notifier.deleteCourse();
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при удалении курса: $e'),
             backgroundColor: Colors.red,
           ),
         );
