@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' show log;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:meta/meta.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:wordpractice_admin/features/courses/state/course_details_state.dart';
@@ -277,7 +278,7 @@ void _logCourseOpenSnapshot(String courseId, Course? course) {
       name: 'CourseOpen',
     );
     log(
-      'watchCourse: word[$i] UI intent: imageWidget=${hasImage ? 'CachedNetworkImage(url)' : 'placeholder(no url)'} '
+      'watchCourse: word[$i] UI intent: imageWidget=${hasImage ? (kIsWeb ? 'HtmlElementView(<img>)' : 'CachedNetworkImage(url)') : 'placeholder(no url)'} '
       'audioWidget=${hasAudio ? 'play button' : 'Аудио недоступно'}',
       name: 'CourseOpen',
     );
