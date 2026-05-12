@@ -261,21 +261,15 @@ class CourseDetailsScreen extends ConsumerWidget {
     if (result == null) return;
 
     try {
-      if (result.audioBytes == null ||
-          result.audioContentType == null ||
-          result.imageBytes == null ||
-          result.imageContentType == null) {
-        throw StateError('Media must be provided when creating a word');
-      }
       final notifier =
           ref.read(courseDetailsViewModelProvider(courseId).notifier);
       await notifier.addWord(
         arabic: result.arabic,
         translation: result.translation,
-        audioBytes: result.audioBytes!,
-        audioContentType: result.audioContentType!,
-        imageBytes: result.imageBytes!,
-        imageContentType: result.imageContentType!,
+        audioBytes: result.audioBytes,
+        audioContentType: result.audioContentType,
+        imageBytes: result.imageBytes,
+        imageContentType: result.imageContentType,
       );
 
       if (context.mounted) {
@@ -311,7 +305,6 @@ class CourseDetailsScreen extends ConsumerWidget {
       builder: (context) => WordFormDialogWidget(
         initialArabic: word.arabic,
         initialTranslation: word.translation,
-        requireMedia: false,
       ),
     );
 

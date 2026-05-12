@@ -46,15 +46,14 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     );
   }
 
-  /// Adds new word with media to current course.
-  /// Accepts texts and raw media bytes with content types.
+  /// Adds new word with optional media to current course.
   Future<void> addWord({
     required String arabic,
     required String translation,
-    required Uint8List audioBytes,
-    required String audioContentType,
-    required Uint8List imageBytes,
-    required String imageContentType,
+    Uint8List? audioBytes,
+    String? audioContentType,
+    Uint8List? imageBytes,
+    String? imageContentType,
   }) async {
     if (arabic.trim().isEmpty || translation.trim().isEmpty) {
       throw ArgumentError('Arabic and translation must not be empty');
@@ -132,11 +131,21 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     state = state.copyWith(isSavingWord: true, error: null);
 
     try {
+      if (audioBytes != null && audioContentType == null) {
+        throw ArgumentError('audioContentType is required when audioBytes is set');
+      }
+      if (audioContentType != null && audioBytes == null) {
+        throw ArgumentError('audioBytes is required when audioContentType is set');
+      }
+      if (imageBytes != null && imageContentType == null) {
+        throw ArgumentError('imageContentType is required when imageBytes is set');
+      }
+      if (imageContentType != null && imageBytes == null) {
+        throw ArgumentError('imageBytes is required when imageContentType is set');
+      }
+
       WordMediaData? media;
-      if (audioBytes != null &&
-          audioContentType != null &&
-          imageBytes != null &&
-          imageContentType != null) {
+      if (audioBytes != null || imageBytes != null) {
         media = WordMediaData(
           audioBytes: audioBytes,
           audioContentType: audioContentType,

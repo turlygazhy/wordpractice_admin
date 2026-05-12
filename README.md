@@ -11,7 +11,7 @@
 ```bash
 flutter build web --base-href /wordpractice_admin/
 
-Шаг 2. Копирование билда в папку docs
+## Шаг 2. Копирование билда в папку docs
 
 GitHub Pages настроен на ветку main → папка /docs.
 

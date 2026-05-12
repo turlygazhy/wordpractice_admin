@@ -13,19 +13,20 @@ class DuplicateCourseTitleException implements Exception {
 }
 
 /// Immutable value object for word media payload.
-/// Holds raw bytes and content types for upload.
+/// Each side is optional; when [audioBytes] is set, [audioContentType] must be
+/// set (same for image). Callers enforce this.
 @immutable
 class WordMediaData {
-  final Uint8List audioBytes;
-  final String audioContentType;
-  final Uint8List imageBytes;
-  final String imageContentType;
+  final Uint8List? audioBytes;
+  final String? audioContentType;
+  final Uint8List? imageBytes;
+  final String? imageContentType;
 
   const WordMediaData({
-    required this.audioBytes,
-    required this.audioContentType,
-    required this.imageBytes,
-    required this.imageContentType,
+    this.audioBytes,
+    this.audioContentType,
+    this.imageBytes,
+    this.imageContentType,
   });
 }
 
@@ -151,6 +152,8 @@ class CourseService {
         courseId: courseId,
         wordIndex: existingWords.length,
         media: media,
+        fallbackAudioUrl: '',
+        fallbackImageUrl: '',
       );
 
       final newWord = CourseWord(
@@ -203,13 +206,20 @@ class CourseService {
       String imageUrl = currentWord.imageUrl;
 
       if (media != null) {
-        final mediaUrls = await _uploadWordMedia(
-          courseId: courseId,
-          wordIndex: index,
-          media: media,
-        );
-        audioUrl = mediaUrls.$1;
-        imageUrl = mediaUrls.$2;
+        final hasUpload = (media.audioBytes != null &&
+                media.audioContentType != null) ||
+            (media.imageBytes != null && media.imageContentType != null);
+        if (hasUpload) {
+          final mediaUrls = await _uploadWordMedia(
+            courseId: courseId,
+            wordIndex: index,
+            media: media,
+            fallbackAudioUrl: audioUrl,
+            fallbackImageUrl: imageUrl,
+          );
+          audioUrl = mediaUrls.$1;
+          imageUrl = mediaUrls.$2;
+        }
       }
 
       final updatedWord = currentWord
@@ -257,42 +267,91 @@ class CourseService {
     });
   }
 
-  /// Internal helper for uploading audio and image to Firebase Storage.
-  /// Returns tuple of (audioUrl, imageUrl).
+  /// Uploads optional audio/image; missing sides use [fallbackAudioUrl] /
+  /// [fallbackImageUrl] (empty strings for new words, existing URLs when updating).
   Future<(String, String)> _uploadWordMedia({
     required String courseId,
     required int wordIndex,
     required WordMediaData media,
+    required String fallbackAudioUrl,
+    required String fallbackImageUrl,
   }) async {
-    final baseRef = _storage
+    final hasAudio =
+        media.audioBytes != null && media.audioContentType != null;
+    final hasImage =
+        media.imageBytes != null && media.imageContentType != null;
+
+    if (hasAudio && hasImage) {
+      final results = await Future.wait([
+        _uploadWordAudio(
+          courseId: courseId,
+          wordIndex: wordIndex,
+          bytes: media.audioBytes!,
+          contentType: media.audioContentType!,
+        ),
+        _uploadWordImage(
+          courseId: courseId,
+          wordIndex: wordIndex,
+          bytes: media.imageBytes!,
+          contentType: media.imageContentType!,
+        ),
+      ]);
+      return (results[0], results[1]);
+    }
+    if (hasAudio) {
+      final audioUrl = await _uploadWordAudio(
+        courseId: courseId,
+        wordIndex: wordIndex,
+        bytes: media.audioBytes!,
+        contentType: media.audioContentType!,
+      );
+      return (audioUrl, fallbackImageUrl);
+    }
+    if (hasImage) {
+      final imageUrl = await _uploadWordImage(
+        courseId: courseId,
+        wordIndex: wordIndex,
+        bytes: media.imageBytes!,
+        contentType: media.imageContentType!,
+      );
+      return (fallbackAudioUrl, imageUrl);
+    }
+    return (fallbackAudioUrl, fallbackImageUrl);
+  }
+
+  Reference _wordMediaBaseRef(String courseId) {
+    return _storage
         .ref()
         .child('courses')
         .child(courseId)
         .child('words');
+  }
 
+  Future<String> _uploadWordAudio({
+    required String courseId,
+    required int wordIndex,
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final audioRef = _wordMediaBaseRef(courseId)
+        .child('word_${wordIndex}_$timestamp.mp3');
+    final metadata = SettableMetadata(contentType: contentType);
+    await audioRef.putData(bytes, metadata);
+    return audioRef.getDownloadURL();
+  }
 
-    final audioRef = baseRef.child('word_${wordIndex}_$timestamp.mp3');
-    final imageRef = baseRef.child('word_${wordIndex}_$timestamp.jpg');
-
-    final audioMetadata = SettableMetadata(contentType: media.audioContentType);
-    final imageMetadata = SettableMetadata(contentType: media.imageContentType);
-
-    final audioTask = audioRef.putData(media.audioBytes, audioMetadata).then((
-      _,
-    ) async {
-      return audioRef.getDownloadURL();
-    });
-
-    final imageTask = imageRef.putData(media.imageBytes, imageMetadata).then((
-      _,
-    ) async {
-      return imageRef.getDownloadURL();
-    });
-
-    final audioUrl = await audioTask;
-    final imageUrl = await imageTask;
-
-    return (audioUrl, imageUrl);
+  Future<String> _uploadWordImage({
+    required String courseId,
+    required int wordIndex,
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final imageRef = _wordMediaBaseRef(courseId)
+        .child('word_${wordIndex}_$timestamp.jpg');
+    final metadata = SettableMetadata(contentType: contentType);
+    await imageRef.putData(bytes, metadata);
+    return imageRef.getDownloadURL();
   }
 }

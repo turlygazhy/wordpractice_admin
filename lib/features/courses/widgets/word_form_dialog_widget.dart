@@ -29,13 +29,11 @@ class WordFormResult {
 class WordFormDialogWidget extends StatefulWidget {
   final String? initialArabic;
   final String? initialTranslation;
-  final bool requireMedia;
 
   const WordFormDialogWidget({
     super.key,
     this.initialArabic,
     this.initialTranslation,
-    this.requireMedia = true,
   });
 
   @override
@@ -53,7 +51,6 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
 
   String? _arabicError;
   String? _translationError;
-  String? _mediaError;
 
   @override
   void initState() {
@@ -76,7 +73,6 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
     setState(() {
       _arabicError = null;
       _translationError = null;
-      _mediaError = null;
     });
 
     final arabic = _arabicController.text.trim();
@@ -91,15 +87,6 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
     if (translation.isEmpty) {
       _translationError = 'Обязательно';
       hasError = true;
-    }
-    if (widget.requireMedia) {
-      if (_audioBytes == null ||
-          _audioContentType == null ||
-          _imageBytes == null ||
-          _imageContentType == null) {
-        _mediaError = 'Аудио и картинка обязательны';
-        hasError = true;
-      }
     }
 
     if (hasError) {
@@ -138,7 +125,6 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
     setState(() {
       _audioBytes = bytes.asUint8List();
       _audioContentType = file.type.isEmpty ? 'audio/mpeg' : file.type;
-      _mediaError = null;
     });
   }
 
@@ -161,7 +147,6 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
     setState(() {
       _imageBytes = bytes.asUint8List();
       _imageContentType = file.type.isEmpty ? 'image/jpeg' : file.type;
-      _mediaError = null;
     });
   }
 
@@ -220,16 +205,6 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
               ),
             ],
           ),
-          if (_mediaError != null) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _mediaError!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
-              ),
-            ),
-          ],
           if (!kIsWeb) ...[
             const SizedBox(height: 8),
             const Text(
