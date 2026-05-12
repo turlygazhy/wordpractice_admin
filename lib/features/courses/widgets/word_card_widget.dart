@@ -1,3 +1,5 @@
+import 'dart:developer' show log;
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -37,6 +39,28 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   @override
   void initState() {
     super.initState();
+    final w = widget.word;
+    final hasImg = w.imageUrl.trim().isNotEmpty;
+    final hasAud = w.audioUrl.trim().isNotEmpty;
+    log(
+      'WordCard init: index=${widget.index} arabicLen=${w.arabic.length} '
+      'translationLen=${w.translation.length} '
+      'planImage=${hasImg ? 'CachedNetworkImage' : 'icon image_not_supported'} '
+      'planAudio=${hasAud ? 'play control' : 'Аудио недоступно'}',
+      name: 'CourseOpen',
+    );
+    if (hasImg) {
+      log(
+        'WordCard init: index=${widget.index} imageUrl ${_wordCardUrlPreview(w.imageUrl)}',
+        name: 'CourseOpen',
+      );
+    }
+    if (hasAud) {
+      log(
+        'WordCard init: index=${widget.index} audioUrl ${_wordCardUrlPreview(w.audioUrl)}',
+        name: 'CourseOpen',
+      );
+    }
     if (kIsWeb) {
       _webAudioPlayer = web_audio.WebAudioPlayer();
       _webAudioPlayer!.onEnded.listen((_) {
@@ -221,6 +245,11 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   /// Shows placeholder when image URL is empty or invalid.
   Widget _buildImage(String imageUrl) {
     if (imageUrl.isEmpty) {
+      log(
+        'WordCard image: data empty -> placeholder image_not_supported '
+        'index=${widget.index}',
+        name: 'CourseOpen',
+      );
       return Container(
         width: 100,
         height: 100,
@@ -234,6 +263,10 @@ class _WordCardWidgetState extends State<WordCardWidget> {
 
     final cleanUrl = imageUrl.trim();
     if (cleanUrl.isEmpty) {
+      log(
+        'WordCard image: trim empty -> placeholder index=${widget.index}',
+        name: 'CourseOpen',
+      );
       return Container(
         width: 100,
         height: 100,
@@ -244,6 +277,12 @@ class _WordCardWidgetState extends State<WordCardWidget> {
         child: const Icon(Icons.image_not_supported, color: Colors.grey),
       );
     }
+
+    log(
+      'WordCard image: start CachedNetworkImage index=${widget.index} '
+      'url=${_wordCardUrlPreview(cleanUrl)}',
+      name: 'CourseOpen',
+    );
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -256,6 +295,19 @@ class _WordCardWidgetState extends State<WordCardWidget> {
         memCacheHeight: 100,
         maxWidthDiskCache: 200,
         maxHeightDiskCache: 200,
+        imageBuilder: (context, imageProvider) {
+          log(
+            'WordCard image: OK decoded index=${widget.index} '
+            'url=${_wordCardUrlPreview(cleanUrl)}',
+            name: 'CourseOpen',
+          );
+          return Image(
+            image: imageProvider,
+            width: 100,
+            height: 100,
+            fit: BoxFit.cover,
+          );
+        },
         placeholder: (context, url) => Container(
           width: 100,
           height: 100,
@@ -265,15 +317,23 @@ class _WordCardWidgetState extends State<WordCardWidget> {
           ),
           child: const Center(child: CircularProgressIndicator()),
         ),
-        errorWidget: (context, url, error) => Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.broken_image, color: Colors.grey),
-        ),
+        errorWidget: (context, url, error) {
+          log(
+            'WordCard image: FAIL index=${widget.index} '
+            'url=${_wordCardUrlPreview(url.toString())} error=$error',
+            name: 'CourseOpen',
+            error: error,
+          );
+          return Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          );
+        },
       ),
     );
   }
@@ -337,5 +397,12 @@ class _WordCardWidgetState extends State<WordCardWidget> {
       ),
     );
   }
+}
+
+String _wordCardUrlPreview(String url, [int max = 120]) {
+  final t = url.trim();
+  if (t.isEmpty) return '(empty)';
+  if (t.length <= max) return t;
+  return '${t.substring(0, max)}… totalLen=${t.length}';
 }
 

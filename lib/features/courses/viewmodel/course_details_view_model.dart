@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:meta/meta.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:wordpractice_admin/features/courses/state/course_details_state.dart';
+import 'package:wordpractice_admin/features/courses/state/course_models.dart';
 import 'package:wordpractice_admin/services/course_service.dart';
 
 /// ViewModel for course details screen.
@@ -27,18 +28,26 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
   /// Starts listening to single course changes.
   /// Updates state on each event.
   void _listenToCourse() {
+    log('watchCourse: subscribe start courseId=$_courseId', name: 'CourseOpen');
     state = state.copyWith(isLoading: true, error: null);
 
     _subscription?.cancel();
     _subscription = _service.watchCourse(_courseId).listen(
       (course) {
+        _logCourseOpenSnapshot(_courseId, course);
         state = state.copyWith(
           course: course,
           isLoading: false,
           error: null,
         );
       },
-      onError: (Object e, StackTrace _) {
+      onError: (Object e, StackTrace st) {
+        log(
+          'watchCourse: stream ERROR courseId=$_courseId $e',
+          name: 'CourseOpen',
+          error: e,
+          stackTrace: st,
+        );
         state = state.copyWith(
           isLoading: false,
           error: e,
@@ -232,5 +241,57 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     _subscription?.cancel();
     super.dispose();
   }
+}
+
+void _logCourseOpenSnapshot(String courseId, Course? course) {
+  if (course == null) {
+    log(
+      'watchCourse: snapshot courseId=$courseId course=null (нет документа или пусто)',
+      name: 'CourseOpen',
+    );
+    return;
+  }
+
+  log(
+    'watchCourse: snapshot courseId=$courseId docId=${course.id} '
+    'titleLen=${course.title.length} descriptionLen=${course.description.length} '
+    'displayed=${course.displayed} wordsCount=${course.words.length}',
+    name: 'CourseOpen',
+  );
+
+  for (var i = 0; i < course.words.length; i++) {
+    final w = course.words[i];
+    final hasImage = w.imageUrl.trim().isNotEmpty;
+    final hasAudio = w.audioUrl.trim().isNotEmpty;
+    log(
+      'watchCourse: word[$i] arabicLen=${w.arabic.length} translationLen=${w.translation.length} '
+      'male=${w.male} hasImageUrl=$hasImage hasAudioUrl=$hasAudio',
+      name: 'CourseOpen',
+    );
+    log(
+      'watchCourse: word[$i] imageUrl ${_courseOpenUrlPreview(w.imageUrl)}',
+      name: 'CourseOpen',
+    );
+    log(
+      'watchCourse: word[$i] audioUrl ${_courseOpenUrlPreview(w.audioUrl)}',
+      name: 'CourseOpen',
+    );
+    log(
+      'watchCourse: word[$i] UI intent: imageWidget=${hasImage ? 'CachedNetworkImage(url)' : 'placeholder(no url)'} '
+      'audioWidget=${hasAudio ? 'play button' : 'Аудио недоступно'}',
+      name: 'CourseOpen',
+    );
+  }
+}
+
+String _courseOpenUrlPreview(String url, [int max = 120]) {
+  if (url.isEmpty) {
+    return '(empty)';
+  }
+  final t = url.trim();
+  if (t.length <= max) {
+    return t;
+  }
+  return '${t.substring(0, max)}… totalLen=${t.length}';
 }
 
