@@ -15,8 +15,9 @@ flutter build web --base-href /wordpractice_admin/
 
 GitHub Pages настроен на ветку main → папка /docs.
 
-rm -rf docs/*
-cp -r build/web/* docs/
+Запустить по очереди следующие команды:
+Remove-Item -Path docs\* -Recurse -Force
+Copy-Item -Path build\web\* -Destination docs -Recurse -Force
 
 
 Все файлы из build/web должны оказаться сразу в docs/
