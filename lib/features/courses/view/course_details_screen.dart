@@ -1,3 +1,5 @@
+import 'dart:developer' show log;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wordpractice_admin/features/courses/providers.dart';
@@ -253,14 +255,32 @@ class CourseDetailsScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    log(
+      'addWord: open dialog courseId=$courseId',
+      name: 'WordCRUD.screen',
+    );
     final result = await showDialog<WordFormResult>(
       context: context,
       builder: (context) => const WordFormDialogWidget(),
     );
 
-    if (result == null) return;
+    if (result == null) {
+      log('addWord: dialog cancelled', name: 'WordCRUD.screen');
+      return;
+    }
+
+    log(
+      'addWord: dialog result arabicLen=${result.arabic.length} '
+      'translationLen=${result.translation.length} '
+      'audioBytes=${result.audioBytes?.length ?? 0} '
+      'audioContentType=${result.audioContentType} '
+      'imageBytes=${result.imageBytes?.length ?? 0} '
+      'imageContentType=${result.imageContentType}',
+      name: 'WordCRUD.screen',
+    );
 
     try {
+      log('addWord: calling notifier.addWord', name: 'WordCRUD.screen');
       final notifier =
           ref.read(courseDetailsViewModelProvider(courseId).notifier);
       await notifier.addWord(
@@ -272,6 +292,7 @@ class CourseDetailsScreen extends ConsumerWidget {
         imageContentType: result.imageContentType,
       );
 
+      log('addWord: notifier.addWord completed OK', name: 'WordCRUD.screen');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -280,7 +301,13 @@ class CourseDetailsScreen extends ConsumerWidget {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      log(
+        'addWord: ERROR $e',
+        name: 'WordCRUD.screen',
+        error: e,
+        stackTrace: st,
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -300,6 +327,12 @@ class CourseDetailsScreen extends ConsumerWidget {
     int index,
     CourseWord word,
   ) async {
+    log(
+      'updateWord: open dialog courseId=$courseId index=$index '
+      'currentAudioUrlLen=${word.audioUrl.length} '
+      'currentImageUrlLen=${word.imageUrl.length}',
+      name: 'WordCRUD.screen',
+    );
     final result = await showDialog<WordFormResult>(
       context: context,
       builder: (context) => WordFormDialogWidget(
@@ -308,9 +341,23 @@ class CourseDetailsScreen extends ConsumerWidget {
       ),
     );
 
-    if (result == null) return;
+    if (result == null) {
+      log('updateWord: dialog cancelled index=$index', name: 'WordCRUD.screen');
+      return;
+    }
+
+    log(
+      'updateWord: dialog result index=$index arabicLen=${result.arabic.length} '
+      'translationLen=${result.translation.length} '
+      'audioBytes=${result.audioBytes?.length ?? 0} '
+      'audioContentType=${result.audioContentType} '
+      'imageBytes=${result.imageBytes?.length ?? 0} '
+      'imageContentType=${result.imageContentType}',
+      name: 'WordCRUD.screen',
+    );
 
     try {
+      log('updateWord: calling notifier.updateWord index=$index', name: 'WordCRUD.screen');
       final notifier =
           ref.read(courseDetailsViewModelProvider(courseId).notifier);
       await notifier.updateWord(
@@ -323,6 +370,7 @@ class CourseDetailsScreen extends ConsumerWidget {
         imageContentType: result.imageContentType,
       );
 
+      log('updateWord: notifier.updateWord completed OK index=$index', name: 'WordCRUD.screen');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -331,7 +379,13 @@ class CourseDetailsScreen extends ConsumerWidget {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      log(
+        'updateWord: ERROR index=$index $e',
+        name: 'WordCRUD.screen',
+        error: e,
+        stackTrace: st,
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

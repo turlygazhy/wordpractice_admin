@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' show log;
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -62,6 +63,13 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     state = state.copyWith(isSavingWord: true, error: null);
 
     try {
+      log(
+        'addWord: start courseId=$_courseId arabicLen=${arabic.trim().length} '
+        'translationLen=${translation.trim().length} '
+        'audioBytes=${audioBytes?.length ?? 0} audioContentType=$audioContentType '
+        'imageBytes=${imageBytes?.length ?? 0} imageContentType=$imageContentType',
+        name: 'WordCRUD.vm',
+      );
       await _service.addWord(
         courseId: _courseId,
         arabic: arabic.trim(),
@@ -73,12 +81,20 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
           imageContentType: imageContentType,
         ),
       );
-    } catch (e) {
+      log('addWord: service.addWord finished OK courseId=$_courseId', name: 'WordCRUD.vm');
+    } catch (e, st) {
+      log(
+        'addWord: ERROR courseId=$_courseId $e',
+        name: 'WordCRUD.vm',
+        error: e,
+        stackTrace: st,
+      );
       state = state.copyWith(isSavingWord: false, error: e);
       rethrow;
     }
 
     state = state.copyWith(isSavingWord: false);
+    log('addWord: state cleared isSavingWord=false courseId=$_courseId', name: 'WordCRUD.vm');
   }
 
   /// Updates course metadata such as title and displayed flag.
@@ -131,6 +147,13 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     state = state.copyWith(isSavingWord: true, error: null);
 
     try {
+      log(
+        'updateWord: start courseId=$_courseId index=$index '
+        'arabicLen=${arabic.trim().length} translationLen=${translation.trim().length} '
+        'audioBytes=${audioBytes?.length ?? 0} audioContentType=$audioContentType '
+        'imageBytes=${imageBytes?.length ?? 0} imageContentType=$imageContentType',
+        name: 'WordCRUD.vm',
+      );
       if (audioBytes != null && audioContentType == null) {
         throw ArgumentError('audioContentType is required when audioBytes is set');
       }
@@ -152,6 +175,13 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
           imageBytes: imageBytes,
           imageContentType: imageContentType,
         );
+        log(
+          'updateWord: built WordMediaData hasAudio=${audioBytes != null} '
+          'hasImage=${imageBytes != null}',
+          name: 'WordCRUD.vm',
+        );
+      } else {
+        log('updateWord: no new media bytes (text-only update)', name: 'WordCRUD.vm');
       }
 
       await _service.updateWord(
@@ -161,12 +191,26 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
         translation: translation.trim(),
         media: media,
       );
-    } catch (e) {
+      log(
+        'updateWord: service.updateWord finished OK courseId=$_courseId index=$index',
+        name: 'WordCRUD.vm',
+      );
+    } catch (e, st) {
+      log(
+        'updateWord: ERROR courseId=$_courseId index=$index $e',
+        name: 'WordCRUD.vm',
+        error: e,
+        stackTrace: st,
+      );
       state = state.copyWith(isSavingWord: false, error: e);
       rethrow;
     }
 
     state = state.copyWith(isSavingWord: false);
+    log(
+      'updateWord: state cleared isSavingWord=false courseId=$_courseId index=$index',
+      name: 'WordCRUD.vm',
+    );
   }
 
   /// Deletes word by index from current course.

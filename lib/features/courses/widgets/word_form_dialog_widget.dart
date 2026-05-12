@@ -1,3 +1,4 @@
+import 'dart:developer' show log;
 import 'dart:typed_data';
 import 'dart:html' as html;
 
@@ -40,6 +41,20 @@ class WordFormDialogWidget extends StatefulWidget {
   State<WordFormDialogWidget> createState() => _WordFormDialogWidgetState();
 }
 
+/// Normalizes [html.FileReader.result] after [readAsArrayBuffer]: web may expose
+/// either [ByteBuffer] or [Uint8List] (e.g. NativeUint8List).
+Uint8List _fileReaderResultToUint8List(Object? result) {
+  if (result is ByteBuffer) {
+    return result.asUint8List();
+  }
+  if (result is Uint8List) {
+    return result;
+  }
+  throw StateError(
+    'Unexpected FileReader.result type: ${result?.runtimeType}',
+  );
+}
+
 class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
   late final TextEditingController _arabicController;
   late final TextEditingController _translationController;
@@ -55,6 +70,11 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
   @override
   void initState() {
     super.initState();
+    log(
+      'WordFormDialog: init initialArabicSet=${widget.initialArabic != null} '
+      'initialTranslationSet=${widget.initialTranslation != null}',
+      name: 'WordCRUD.dialog',
+    );
     _arabicController = TextEditingController(text: widget.initialArabic ?? '');
     _translationController =
         TextEditingController(text: widget.initialTranslation ?? '');
@@ -90,10 +110,21 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
     }
 
     if (hasError) {
+      log(
+        'WordFormDialog: submit blocked validation arabicEmpty=${arabic.isEmpty} '
+        'translationEmpty=${translation.isEmpty}',
+        name: 'WordCRUD.dialog',
+      );
       setState(() {});
       return;
     }
 
+    log(
+      'WordFormDialog: submit pop arabicLen=${arabic.length} translationLen=${translation.length} '
+      'audioBytes=${_audioBytes?.length ?? 0} audioContentType=$_audioContentType '
+      'imageBytes=${_imageBytes?.length ?? 0} imageContentType=$_imageContentType',
+      name: 'WordCRUD.dialog',
+    );
     Navigator.of(context).pop(
       WordFormResult(
         arabic: arabic,
@@ -115,15 +146,26 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
     input.click();
 
     await input.onChange.first;
-    if (input.files == null || input.files!.isEmpty) return;
+    if (input.files == null || input.files!.isEmpty) {
+      log('WordFormDialog: pick audio cancelled (no file)', name: 'WordCRUD.dialog');
+      return;
+    }
 
     final file = input.files!.first;
+    log(
+      'WordFormDialog: pick audio file name=${file.name} size=${file.size} type=${file.type}',
+      name: 'WordCRUD.dialog',
+    );
     final reader = html.FileReader()..readAsArrayBuffer(file);
     await reader.onLoad.first;
 
-    final bytes = reader.result as ByteBuffer;
+    final bytes = _fileReaderResultToUint8List(reader.result);
+    log(
+      'WordFormDialog: pick audio read OK bytes=${bytes.length}',
+      name: 'WordCRUD.dialog',
+    );
     setState(() {
-      _audioBytes = bytes.asUint8List();
+      _audioBytes = bytes;
       _audioContentType = file.type.isEmpty ? 'audio/mpeg' : file.type;
     });
   }
@@ -137,15 +179,26 @@ class _WordFormDialogWidgetState extends State<WordFormDialogWidget> {
     input.click();
 
     await input.onChange.first;
-    if (input.files == null || input.files!.isEmpty) return;
+    if (input.files == null || input.files!.isEmpty) {
+      log('WordFormDialog: pick image cancelled (no file)', name: 'WordCRUD.dialog');
+      return;
+    }
 
     final file = input.files!.first;
+    log(
+      'WordFormDialog: pick image file name=${file.name} size=${file.size} type=${file.type}',
+      name: 'WordCRUD.dialog',
+    );
     final reader = html.FileReader()..readAsArrayBuffer(file);
     await reader.onLoad.first;
 
-    final bytes = reader.result as ByteBuffer;
+    final bytes = _fileReaderResultToUint8List(reader.result);
+    log(
+      'WordFormDialog: pick image read OK bytes=${bytes.length}',
+      name: 'WordCRUD.dialog',
+    );
     setState(() {
-      _imageBytes = bytes.asUint8List();
+      _imageBytes = bytes;
       _imageContentType = file.type.isEmpty ? 'image/jpeg' : file.type;
     });
   }

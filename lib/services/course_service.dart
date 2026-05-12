@@ -1,3 +1,4 @@
+import 'dart:developer' show log;
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,6 +29,12 @@ class WordMediaData {
     this.imageBytes,
     this.imageContentType,
   });
+}
+
+String _wordCrudUrlPreview(String url, [int max = 120]) {
+  if (url.isEmpty) return '(empty)';
+  if (url.length <= max) return url;
+  return '${url.substring(0, max)}…';
 }
 
 /// Service responsible for Firestore and Storage operations for courses.
@@ -133,11 +140,22 @@ class CourseService {
     required String translation,
     required WordMediaData media,
   }) async {
+    log(
+      'addWord: enter courseId=$courseId arabicLen=${arabic.length} '
+      'translationLen=${translation.length} '
+      'media audioBytes=${media.audioBytes?.length ?? 0} '
+      'audioContentType=${media.audioContentType} '
+      'imageBytes=${media.imageBytes?.length ?? 0} '
+      'imageContentType=${media.imageContentType}',
+      name: 'WordCRUD.service',
+    );
     final docRef = _coursesRef.doc(courseId);
 
     await _firestore.runTransaction((transaction) async {
+      log('addWord: transaction start courseId=$courseId', name: 'WordCRUD.service');
       final snapshot = await transaction.get(docRef);
       if (!snapshot.exists) {
+        log('addWord: transaction abort course not found courseId=$courseId', name: 'WordCRUD.service');
         throw StateError('Course not found for id: $courseId');
       }
 
@@ -148,12 +166,27 @@ class CourseService {
               .whereType<Map<String, dynamic>>()
               .toList();
 
+      final newIndex = existingWords.length;
+      log(
+        'addWord: transaction read OK wordsCount=$newIndex (new word index=$newIndex)',
+        name: 'WordCRUD.service',
+      );
+
+      log(
+        'addWord: uploading media wordIndex=$newIndex fallbacks audio="" image=""',
+        name: 'WordCRUD.service',
+      );
       final mediaUrls = await _uploadWordMedia(
         courseId: courseId,
-        wordIndex: existingWords.length,
+        wordIndex: newIndex,
         media: media,
         fallbackAudioUrl: '',
         fallbackImageUrl: '',
+      );
+      log(
+        'addWord: upload done audioUrl=${_wordCrudUrlPreview(mediaUrls.$1)} '
+        'imageUrl=${_wordCrudUrlPreview(mediaUrls.$2)}',
+        name: 'WordCRUD.service',
       );
 
       final newWord = CourseWord(
@@ -166,8 +199,13 @@ class CourseService {
 
       existingWords.add(newWord);
 
+      log(
+        'addWord: transaction.update words len=${existingWords.length}',
+        name: 'WordCRUD.service',
+      );
       transaction.update(docRef, {'words': existingWords});
     });
+    log('addWord: transaction committed courseId=$courseId', name: 'WordCRUD.service');
   }
 
   /// Updates existing word by index in words array.
@@ -179,11 +217,30 @@ class CourseService {
     required String translation,
     WordMediaData? media,
   }) async {
+    log(
+      'updateWord: enter courseId=$courseId index=$index arabicLen=${arabic.length} '
+      'translationLen=${translation.length} mediaNull=${media == null}',
+      name: 'WordCRUD.service',
+    );
+    if (media != null) {
+      log(
+        'updateWord: media payload audioBytes=${media.audioBytes?.length ?? 0} '
+        'audioContentType=${media.audioContentType} '
+        'imageBytes=${media.imageBytes?.length ?? 0} '
+        'imageContentType=${media.imageContentType}',
+        name: 'WordCRUD.service',
+      );
+    }
     final docRef = _coursesRef.doc(courseId);
 
     await _firestore.runTransaction((transaction) async {
+      log(
+        'updateWord: transaction start courseId=$courseId index=$index',
+        name: 'WordCRUD.service',
+      );
       final snapshot = await transaction.get(docRef);
       if (!snapshot.exists) {
+        log('updateWord: transaction abort course not found', name: 'WordCRUD.service');
         throw StateError('Course not found for id: $courseId');
       }
 
@@ -195,6 +252,10 @@ class CourseService {
               .toList();
 
       if (index < 0 || index >= existingWords.length) {
+        log(
+          'updateWord: transaction abort bad index=$index wordsLen=${existingWords.length}',
+          name: 'WordCRUD.service',
+        );
         throw RangeError.index(index, existingWords, 'index');
       }
 
@@ -204,12 +265,23 @@ class CourseService {
 
       String audioUrl = currentWord.audioUrl;
       String imageUrl = currentWord.imageUrl;
+      log(
+        'updateWord: current urls audio=${_wordCrudUrlPreview(audioUrl)} '
+        'image=${_wordCrudUrlPreview(imageUrl)}',
+        name: 'WordCRUD.service',
+      );
 
       if (media != null) {
         final hasUpload = (media.audioBytes != null &&
                 media.audioContentType != null) ||
             (media.imageBytes != null && media.imageContentType != null);
+        log('updateWord: hasUpload=$hasUpload', name: 'WordCRUD.service');
         if (hasUpload) {
+          log(
+            'updateWord: calling _uploadWordMedia index=$index '
+            'fallbackAudioLen=${audioUrl.length} fallbackImageLen=${imageUrl.length}',
+            name: 'WordCRUD.service',
+          );
           final mediaUrls = await _uploadWordMedia(
             courseId: courseId,
             wordIndex: index,
@@ -219,6 +291,16 @@ class CourseService {
           );
           audioUrl = mediaUrls.$1;
           imageUrl = mediaUrls.$2;
+          log(
+            'updateWord: upload done new audio=${_wordCrudUrlPreview(audioUrl)} '
+            'new image=${_wordCrudUrlPreview(imageUrl)}',
+            name: 'WordCRUD.service',
+          );
+        } else {
+          log(
+            'updateWord: media object present but hasUpload=false (no bytes)',
+            name: 'WordCRUD.service',
+          );
         }
       }
 
@@ -233,8 +315,13 @@ class CourseService {
 
       existingWords[index] = updatedWord;
 
+      log('updateWord: transaction.update index=$index', name: 'WordCRUD.service');
       transaction.update(docRef, {'words': existingWords});
     });
+    log(
+      'updateWord: transaction committed courseId=$courseId index=$index',
+      name: 'WordCRUD.service',
+    );
   }
 
   /// Deletes word by index from words array of specific course.
@@ -280,8 +367,15 @@ class CourseService {
         media.audioBytes != null && media.audioContentType != null;
     final hasImage =
         media.imageBytes != null && media.imageContentType != null;
+    log(
+      '_uploadWordMedia: courseId=$courseId wordIndex=$wordIndex '
+      'hasAudio=$hasAudio hasImage=$hasImage '
+      'fallbackAudioLen=${fallbackAudioUrl.length} fallbackImageLen=${fallbackImageUrl.length}',
+      name: 'WordCRUD.service',
+    );
 
     if (hasAudio && hasImage) {
+      log('_uploadWordMedia: parallel audio+image', name: 'WordCRUD.service');
       final results = await Future.wait([
         _uploadWordAudio(
           courseId: courseId,
@@ -296,26 +390,47 @@ class CourseService {
           contentType: media.imageContentType!,
         ),
       ]);
+      log(
+        '_uploadWordMedia: parallel done audio=${_wordCrudUrlPreview(results[0])} '
+        'image=${_wordCrudUrlPreview(results[1])}',
+        name: 'WordCRUD.service',
+      );
       return (results[0], results[1]);
     }
     if (hasAudio) {
+      log('_uploadWordMedia: audio only', name: 'WordCRUD.service');
       final audioUrl = await _uploadWordAudio(
         courseId: courseId,
         wordIndex: wordIndex,
         bytes: media.audioBytes!,
         contentType: media.audioContentType!,
       );
+      log(
+        '_uploadWordMedia: audio only done audio=${_wordCrudUrlPreview(audioUrl)} '
+        'imageFallback=${_wordCrudUrlPreview(fallbackImageUrl)}',
+        name: 'WordCRUD.service',
+      );
       return (audioUrl, fallbackImageUrl);
     }
     if (hasImage) {
+      log('_uploadWordMedia: image only', name: 'WordCRUD.service');
       final imageUrl = await _uploadWordImage(
         courseId: courseId,
         wordIndex: wordIndex,
         bytes: media.imageBytes!,
         contentType: media.imageContentType!,
       );
+      log(
+        '_uploadWordMedia: image only done audioFallback=${_wordCrudUrlPreview(fallbackAudioUrl)} '
+        'image=${_wordCrudUrlPreview(imageUrl)}',
+        name: 'WordCRUD.service',
+      );
       return (fallbackAudioUrl, imageUrl);
     }
+    log(
+      '_uploadWordMedia: no uploads, return fallbacks',
+      name: 'WordCRUD.service',
+    );
     return (fallbackAudioUrl, fallbackImageUrl);
   }
 
@@ -336,9 +451,18 @@ class CourseService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final audioRef = _wordMediaBaseRef(courseId)
         .child('word_${wordIndex}_$timestamp.mp3');
+    final path = 'courses/$courseId/words/word_${wordIndex}_$timestamp.mp3';
+    log(
+      '_uploadWordAudio: path=$path bytes=${bytes.length} contentType=$contentType',
+      name: 'WordCRUD.service',
+    );
     final metadata = SettableMetadata(contentType: contentType);
+    log('_uploadWordAudio: putData start', name: 'WordCRUD.service');
     await audioRef.putData(bytes, metadata);
-    return audioRef.getDownloadURL();
+    log('_uploadWordAudio: putData done, getDownloadURL', name: 'WordCRUD.service');
+    final url = await audioRef.getDownloadURL();
+    log('_uploadWordAudio: OK url=${_wordCrudUrlPreview(url)}', name: 'WordCRUD.service');
+    return url;
   }
 
   Future<String> _uploadWordImage({
@@ -350,8 +474,17 @@ class CourseService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final imageRef = _wordMediaBaseRef(courseId)
         .child('word_${wordIndex}_$timestamp.jpg');
+    final path = 'courses/$courseId/words/word_${wordIndex}_$timestamp.jpg';
+    log(
+      '_uploadWordImage: path=$path bytes=${bytes.length} contentType=$contentType',
+      name: 'WordCRUD.service',
+    );
     final metadata = SettableMetadata(contentType: contentType);
+    log('_uploadWordImage: putData start', name: 'WordCRUD.service');
     await imageRef.putData(bytes, metadata);
-    return imageRef.getDownloadURL();
+    log('_uploadWordImage: putData done, getDownloadURL', name: 'WordCRUD.service');
+    final url = await imageRef.getDownloadURL();
+    log('_uploadWordImage: OK url=${_wordCrudUrlPreview(url)}', name: 'WordCRUD.service');
+    return url;
   }
 }
