@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wordpractice_admin/features/courses/providers.dart';
@@ -25,12 +26,17 @@ class CoursesScreen extends ConsumerWidget {
     );
   }
 
-  /// Builds app bar with title and add button.
+  /// Builds app bar with title, logout and add buttons.
   /// Uses view model for creating new course.
   PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
     return AppBar(
       title: const Text('Курсы'),
       actions: [
+        IconButton(
+          tooltip: 'Выйти',
+          icon: const Icon(Icons.logout),
+          onPressed: () => FirebaseAuth.instance.signOut(),
+        ),
         _buildAddCourseButton(context, ref),
       ],
     );
