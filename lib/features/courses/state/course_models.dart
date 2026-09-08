@@ -75,6 +75,9 @@ class Course {
   final String instagram;
   final bool maleTest;
   final String youtube;
+  final String youtubeLink;
+  final String vkLink;
+  final String yandexLink;
   final List<CourseWord> words;
 
   const Course({
@@ -87,6 +90,9 @@ class Course {
     required this.instagram,
     required this.maleTest,
     required this.youtube,
+    required this.youtubeLink,
+    required this.vkLink,
+    required this.yandexLink,
     required this.words,
   });
 
@@ -106,6 +112,9 @@ class Course {
       instagram: map['instagram'] as String? ?? '',
       maleTest: map['male_test'] as bool? ?? false,
       youtube: map['youtube'] as String? ?? '',
+      youtubeLink: map['youtube_link'] as String? ?? '',
+      vkLink: map['vk_link'] as String? ?? '',
+      yandexLink: map['yandex_link'] as String? ?? '',
       words: rawWords
           .whereType<Map<String, dynamic>>()
           .map(CourseWord.fromMap)
@@ -126,6 +135,9 @@ class Course {
       'instagram': instagram,
       'male_test': maleTest,
       'youtube': youtube,
+      'youtube_link': youtubeLink,
+      'vk_link': vkLink,
+      'yandex_link': yandexLink,
       'words': words.map((w) => w.toMap()).toList(growable: false),
     };
   }
@@ -142,6 +154,9 @@ class Course {
     String? instagram,
     bool? maleTest,
     String? youtube,
+    String? youtubeLink,
+    String? vkLink,
+    String? yandexLink,
     List<CourseWord>? words,
   }) {
     return Course(
@@ -154,6 +169,9 @@ class Course {
       instagram: instagram ?? this.instagram,
       maleTest: maleTest ?? this.maleTest,
       youtube: youtube ?? this.youtube,
+      youtubeLink: youtubeLink ?? this.youtubeLink,
+      vkLink: vkLink ?? this.vkLink,
+      yandexLink: yandexLink ?? this.yandexLink,
       words: words ?? this.words,
     );
   }

@@ -93,6 +93,8 @@ class CourseDetailsScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _buildDescriptionSection(course),
           const SizedBox(height: 16),
+          _buildVideoLessonSection(context, course),
+          const SizedBox(height: 16),
           _buildDisplayedStatusSection(context, course),
           const SizedBox(height: 24),
           if (isSavingWord) _buildSavingIndicator(),
@@ -137,6 +139,76 @@ class CourseDetailsScreen extends ConsumerWidget {
     return Text(
       course.description,
       style: const TextStyle(fontSize: 16),
+    );
+  }
+
+  /// Builds video lesson section with editable course links.
+  /// Shows current values for YouTube, VK and Yandex.
+  Widget _buildVideoLessonSection(BuildContext context, Course course) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Видео урок',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => _onEditVideoLessonPressed(context, course),
+              child: const Text('Редактировать'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _buildVideoLinkRow('YouTube', course.youtubeLink),
+        const SizedBox(height: 8),
+        _buildVideoLinkRow('VK', course.vkLink),
+        const SizedBox(height: 8),
+        _buildVideoLinkRow('Yandex', course.yandexLink),
+      ],
+    );
+  }
+
+  /// Builds a single read-only row for one platform link.
+  /// Shows placeholder when the link is not set.
+  Widget _buildVideoLinkRow(String label, String value) {
+    final normalizedValue = value.trim();
+    final hasValue = normalizedValue.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            hasValue ? normalizedValue : 'Не задано',
+            style: TextStyle(
+              fontSize: 14,
+              color: hasValue ? Colors.black87 : Colors.grey.shade600,
+              fontStyle: hasValue ? FontStyle.normal : FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -565,6 +637,119 @@ class CourseDetailsScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка при обновлении курса: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Handles editing of dedicated video lesson links for the course.
+  /// Allows saving empty strings to clear individual fields.
+  Future<void> _onEditVideoLessonPressed(
+    BuildContext context,
+    Course course,
+  ) async {
+    final youtubeLinkController = TextEditingController(
+      text: course.youtubeLink,
+    );
+    final vkLinkController = TextEditingController(text: course.vkLink);
+    final yandexLinkController = TextEditingController(
+      text: course.yandexLink,
+    );
+
+    final result = await showDialog<
+      ({String youtubeLink, String vkLink, String yandexLink})
+    >(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Видео урок'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: youtubeLinkController,
+                  decoration: const InputDecoration(
+                    labelText: 'YouTube link',
+                    hintText: 'Оставьте пустым, чтобы очистить',
+                    border: OutlineInputBorder(),
+                  ),
+                  minLines: 1,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: vkLinkController,
+                  decoration: const InputDecoration(
+                    labelText: 'VK link',
+                    hintText: 'Оставьте пустым, чтобы очистить',
+                    border: OutlineInputBorder(),
+                  ),
+                  minLines: 1,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: yandexLinkController,
+                  decoration: const InputDecoration(
+                    labelText: 'Yandex link',
+                    hintText: 'Оставьте пустым, чтобы очистить',
+                    border: OutlineInputBorder(),
+                  ),
+                  minLines: 1,
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(
+                  context,
+                  (
+                    youtubeLink: youtubeLinkController.text.trim(),
+                    vkLink: vkLinkController.text.trim(),
+                    yandexLink: yandexLinkController.text.trim(),
+                  ),
+                );
+              },
+              child: const Text('Сохранить'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    final ref = ProviderScope.containerOf(context).read;
+    try {
+      final notifier = ref(courseDetailsViewModelProvider(courseId).notifier);
+      await notifier.updateCourseMeta(
+        youtubeLink: result.youtubeLink,
+        vkLink: result.vkLink,
+        yandexLink: result.yandexLink,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Видео урок обновлён'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при обновлении видео урока: $e'),
             backgroundColor: Colors.red,
           ),
         );

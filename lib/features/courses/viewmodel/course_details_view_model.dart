@@ -107,20 +107,41 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     log('addWord: state cleared isSavingWord=false courseId=$_courseId', name: 'WordCRUD.vm');
   }
 
-  /// Updates course metadata such as title and displayed flag.
+  /// Updates course metadata such as title, displayed flag and video lesson links.
   /// Delegates to service and keeps other fields unchanged.
   Future<void> updateCourseMeta({
     String? title,
     bool? displayed,
+    String? youtubeLink,
+    String? vkLink,
+    String? yandexLink,
   }) async {
-    if ((title == null || title.trim().isEmpty) && displayed == null) {
+    final hasTitleUpdate = title != null;
+    final hasDisplayedUpdate = displayed != null;
+    final hasYoutubeLinkUpdate = youtubeLink != null;
+    final hasVkLinkUpdate = vkLink != null;
+    final hasYandexLinkUpdate = yandexLink != null;
+
+    if (!hasTitleUpdate &&
+        !hasDisplayedUpdate &&
+        !hasYoutubeLinkUpdate &&
+        !hasVkLinkUpdate &&
+        !hasYandexLinkUpdate) {
       return;
     }
+
+    if (hasTitleUpdate && title.trim().isEmpty) {
+      throw ArgumentError('Title must not be empty');
+    }
+
     try {
       await _service.updateCourseMeta(
         id: _courseId,
-        title: title?.trim(),
+        title: hasTitleUpdate ? title.trim() : null,
         displayed: displayed,
+        youtubeLink: hasYoutubeLinkUpdate ? youtubeLink.trim() : null,
+        vkLink: hasVkLinkUpdate ? vkLink.trim() : null,
+        yandexLink: hasYandexLinkUpdate ? yandexLink.trim() : null,
       );
     } catch (e) {
       state = state.copyWith(error: e);

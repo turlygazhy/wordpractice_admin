@@ -95,18 +95,24 @@ class CourseService {
       instagram: 'https://www.instagram.com/arabic_osman/',
       maleTest: false,
       youtube: 'https://youtube.com/@arabic_osman',
+      youtubeLink: '',
+      vkLink: '',
+      yandexLink: '',
       words: const [],
     ).toMap();
 
     await docRef.set(data);
   }
 
-  /// Updates course metadata fields title and displayed.
+  /// Updates course metadata fields such as title, displayed and video links.
   /// Leaves all other document fields unchanged.
   Future<void> updateCourseMeta({
     required String id,
     String? title,
     bool? displayed,
+    String? youtubeLink,
+    String? vkLink,
+    String? yandexLink,
   }) async {
     final updateData = <String, dynamic>{};
     if (title != null) {
@@ -114,6 +120,15 @@ class CourseService {
     }
     if (displayed != null) {
       updateData['displayed'] = displayed;
+    }
+    if (youtubeLink != null) {
+      updateData['youtube_link'] = youtubeLink;
+    }
+    if (vkLink != null) {
+      updateData['vk_link'] = vkLink;
+    }
+    if (yandexLink != null) {
+      updateData['yandex_link'] = yandexLink;
     }
     if (updateData.isEmpty) return;
 
