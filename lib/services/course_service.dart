@@ -50,11 +50,11 @@ class CourseService {
   CollectionReference<Map<String, dynamic>> get _coursesRef =>
       _firestore.collection('courses');
 
-  /// Watches list of courses with description "Базовый арабский".
+  /// Watches list of courses for a specific description filter.
   /// Returns stream of immutable Course list.
-  Stream<List<Course>> watchCourses() {
+  Stream<List<Course>> watchCourses(String description) {
     return _coursesRef
-        .where('description', isEqualTo: 'Базовый арабский')
+        .where('description', isEqualTo: description)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -66,9 +66,12 @@ class CourseService {
   /// Creates a new course document with generated id and default fields.
   /// Uses Firestore generated id as both document id and field `id`.
   /// Throws [DuplicateCourseTitleException] if a course with the same title already exists.
-  Future<void> createCourse(String title) async {
+  Future<void> createCourse({
+    required String title,
+    required String description,
+  }) async {
     final snapshot = await _coursesRef
-        .where('description', isEqualTo: 'Базовый арабский')
+        .where('description', isEqualTo: description)
         .get();
 
     final normalizedTitle = title.trim();
@@ -84,7 +87,7 @@ class CourseService {
     final data = Course(
       id: courseId,
       title: normalizedTitle,
-      description: 'Базовый арабский',
+      description: description,
       displayed: false,
       icon: '',
       imagePath:

@@ -1,4 +1,5 @@
 import 'package:riverpod/riverpod.dart';
+import 'package:wordpractice_admin/features/courses/state/course_filter.dart';
 import 'package:wordpractice_admin/features/courses/state/course_details_state.dart';
 import 'package:wordpractice_admin/features/courses/state/courses_state.dart';
 import 'package:wordpractice_admin/features/courses/viewmodel/course_details_view_model.dart';
@@ -13,10 +14,19 @@ final courseServiceProvider = Provider<CourseService>((ref) {
 
 /// Provides CoursesViewModel with CoursesState for list screen.
 /// Subscribes to courses collection and exposes CRUD actions.
+final selectedCourseFilterProvider = StateProvider<CourseFilter>((ref) {
+  return CourseFilter.basicArabic;
+});
+
+/// Provides CoursesViewModel with CoursesState for list screen.
+/// Scoped by selected filter so each description has its own subscription.
 final coursesViewModelProvider =
-    StateNotifierProvider<CoursesViewModel, CoursesState>((ref) {
+    StateNotifierProvider.family<CoursesViewModel, CoursesState, CourseFilter>((
+      ref,
+      filter,
+    ) {
   final service = ref.watch(courseServiceProvider);
-  return CoursesViewModel(service);
+  return CoursesViewModel(service: service, filter: filter);
 });
 
 /// Family provider for CourseDetailsViewModel and CourseDetailsState.

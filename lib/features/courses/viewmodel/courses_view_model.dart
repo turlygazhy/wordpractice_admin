@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 import 'package:riverpod/riverpod.dart';
+import 'package:wordpractice_admin/features/courses/state/course_filter.dart';
 import 'package:wordpractice_admin/features/courses/state/courses_state.dart';
 import 'package:wordpractice_admin/services/course_service.dart';
 
@@ -10,9 +11,15 @@ import 'package:wordpractice_admin/services/course_service.dart';
 @immutable
 class CoursesViewModel extends StateNotifier<CoursesState> {
   final CourseService _service;
+  final CourseFilter _filter;
   StreamSubscription? _subscription;
 
-  CoursesViewModel(this._service) : super(CoursesState.initial()) {
+  CoursesViewModel({
+    required CourseService service,
+    required CourseFilter filter,
+  })  : _service = service,
+        _filter = filter,
+        super(CoursesState.initial()) {
     _listenToCourses();
   }
 
@@ -22,7 +29,7 @@ class CoursesViewModel extends StateNotifier<CoursesState> {
     state = state.copyWith(isLoading: true, error: null);
 
     _subscription?.cancel();
-    _subscription = _service.watchCourses().listen(
+    _subscription = _service.watchCourses(_filter.description).listen(
       (courses) {
         state = state.copyWith(
           courses: courses,
@@ -46,7 +53,10 @@ class CoursesViewModel extends StateNotifier<CoursesState> {
       throw ArgumentError('Title must not be empty');
     }
     try {
-      await _service.createCourse(title.trim());
+      await _service.createCourse(
+        title: title.trim(),
+        description: _filter.description,
+      );
     } catch (e) {
       state = state.copyWith(error: e);
       rethrow;

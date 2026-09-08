@@ -2,7 +2,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wordpractice_admin/features/courses/providers.dart';
+import 'package:wordpractice_admin/features/courses/state/course_filter.dart';
 import 'package:wordpractice_admin/features/courses/state/course_models.dart';
+import 'package:wordpractice_admin/features/courses/state/courses_state.dart';
 import 'package:wordpractice_admin/features/courses/widgets/course_list_item_widget.dart';
 import 'package:wordpractice_admin/features/courses/view/course_details_screen.dart';
 import 'package:wordpractice_admin/services/course_service.dart';
@@ -45,8 +47,22 @@ class CoursesScreen extends ConsumerWidget {
   /// Builds main body with courses list and loading or error states.
   /// Subscribes to courses state from Riverpod provider.
   Widget _buildBody(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(coursesViewModelProvider);
+    final selectedFilter = ref.watch(selectedCourseFilterProvider);
+    final state = ref.watch(coursesViewModelProvider(selectedFilter));
 
+    return Column(
+      children: [
+        _buildFilterSection(context, ref, selectedFilter),
+        Expanded(child: _buildCoursesContent(context, state, ref)),
+      ],
+    );
+  }
+
+  Widget _buildCoursesContent(
+    BuildContext context,
+    CoursesState state,
+    WidgetRef ref,
+  ) {
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -62,6 +78,98 @@ class CoursesScreen extends ConsumerWidget {
     }
 
     return _buildCoursesList(context, state.courses, ref);
+  }
+
+  /// Builds prominent filter control for selecting course description.
+  Widget _buildFilterSection(
+    BuildContext context,
+    WidgetRef ref,
+    CourseFilter selectedFilter,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Фильтр курсов',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFilterOption(
+                  context: context,
+                  filter: CourseFilter.basicArabic,
+                  selectedFilter: selectedFilter,
+                  onTap: () => ref
+                      .read(selectedCourseFilterProvider.notifier)
+                      .state = CourseFilter.basicArabic,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildFilterOption(
+                  context: context,
+                  filter: CourseFilter.arabicByEar,
+                  selectedFilter: selectedFilter,
+                  onTap: () => ref
+                      .read(selectedCourseFilterProvider.notifier)
+                      .state = CourseFilter.arabicByEar,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterOption({
+    required BuildContext context,
+    required CourseFilter filter,
+    required CourseFilter selectedFilter,
+    required VoidCallback onTap,
+  }) {
+    final isSelected = filter == selectedFilter;
+    final backgroundColor = isSelected ? Colors.blue : Colors.grey.shade300;
+    final foregroundColor = isSelected ? Colors.white : Colors.grey.shade800;
+
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          child: Row(
+            children: [
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                color: foregroundColor,
+                size: 30,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  filter.label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Builds list of courses as scrollable ListView.
@@ -122,6 +230,7 @@ class CoursesScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    final selectedFilter = ref.read(selectedCourseFilterProvider);
     final titleController = TextEditingController();
     String? errorText;
 
@@ -144,6 +253,35 @@ class CoursesScreen extends ConsumerWidget {
                       errorText: errorText,
                     ),
                     autofocus: true,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Description',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Colors.blue.shade800,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          selectedFilter.description,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -178,7 +316,7 @@ class CoursesScreen extends ConsumerWidget {
 
     if (result != null && result.isNotEmpty) {
       try {
-        final notifier = ref.read(coursesViewModelProvider.notifier);
+        final notifier = ref.read(coursesViewModelProvider(selectedFilter).notifier);
         await notifier.createCourse(result);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -285,7 +423,8 @@ class CoursesScreen extends ConsumerWidget {
 
     if (result != null) {
       try {
-        final notifier = ref.read(coursesViewModelProvider.notifier);
+        final selectedFilter = ref.read(selectedCourseFilterProvider);
+        final notifier = ref.read(coursesViewModelProvider(selectedFilter).notifier);
         await notifier.updateCourseTitle(course.id, result.title);
         await notifier.updateCourseDisplayed(course.id, result.displayed);
       } catch (e) {
@@ -332,7 +471,8 @@ class CoursesScreen extends ConsumerWidget {
 
     if (confirmed == true) {
       try {
-        final notifier = ref.read(coursesViewModelProvider.notifier);
+        final selectedFilter = ref.read(selectedCourseFilterProvider);
+        final notifier = ref.read(coursesViewModelProvider(selectedFilter).notifier);
         await notifier.deleteCourse(course.id);
       } catch (e) {
         if (context.mounted) {
