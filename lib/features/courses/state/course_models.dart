@@ -78,6 +78,7 @@ class Course {
   final String youtubeLink;
   final String vkLink;
   final String yandexLink;
+  final String vimeoLink;
   final List<CourseWord> words;
 
   const Course({
@@ -93,6 +94,7 @@ class Course {
     required this.youtubeLink,
     required this.vkLink,
     required this.yandexLink,
+    required this.vimeoLink,
     required this.words,
   });
 
@@ -115,6 +117,7 @@ class Course {
       youtubeLink: map['youtube_link'] as String? ?? '',
       vkLink: map['vk_link'] as String? ?? '',
       yandexLink: map['yandex_link'] as String? ?? '',
+      vimeoLink: map['vimeo_link'] as String? ?? '',
       words: rawWords
           .whereType<Map<String, dynamic>>()
           .map(CourseWord.fromMap)
@@ -138,6 +141,7 @@ class Course {
       'youtube_link': youtubeLink,
       'vk_link': vkLink,
       'yandex_link': yandexLink,
+      'vimeo_link': vimeoLink,
       'words': words.map((w) => w.toMap()).toList(growable: false),
     };
   }
@@ -157,6 +161,7 @@ class Course {
     String? youtubeLink,
     String? vkLink,
     String? yandexLink,
+    String? vimeoLink,
     List<CourseWord>? words,
   }) {
     return Course(
@@ -172,6 +177,7 @@ class Course {
       youtubeLink: youtubeLink ?? this.youtubeLink,
       vkLink: vkLink ?? this.vkLink,
       yandexLink: yandexLink ?? this.yandexLink,
+      vimeoLink: vimeoLink ?? this.vimeoLink,
       words: words ?? this.words,
     );
   }

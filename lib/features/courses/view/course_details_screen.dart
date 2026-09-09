@@ -143,7 +143,7 @@ class CourseDetailsScreen extends ConsumerWidget {
   }
 
   /// Builds video lesson section with editable course links.
-  /// Shows current values for YouTube, VK and Yandex.
+  /// Shows current values for YouTube, VK and Vimeo.
   Widget _buildVideoLessonSection(BuildContext context, Course course) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +169,7 @@ class CourseDetailsScreen extends ConsumerWidget {
         const SizedBox(height: 8),
         _buildVideoLinkRow('VK', course.vkLink),
         const SizedBox(height: 8),
-        _buildVideoLinkRow('Yandex', course.yandexLink),
+        _buildVideoLinkRow('Vimeo', course.vimeoLink),
       ],
     );
   }
@@ -654,12 +654,12 @@ class CourseDetailsScreen extends ConsumerWidget {
       text: course.youtubeLink,
     );
     final vkLinkController = TextEditingController(text: course.vkLink);
-    final yandexLinkController = TextEditingController(
-      text: course.yandexLink,
+    final vimeoLinkController = TextEditingController(
+      text: course.vimeoLink,
     );
 
     final result = await showDialog<
-      ({String youtubeLink, String vkLink, String yandexLink})
+      ({String youtubeLink, String vkLink, String vimeoLink})
     >(
       context: context,
       builder: (context) {
@@ -692,9 +692,9 @@ class CourseDetailsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: yandexLinkController,
+                  controller: vimeoLinkController,
                   decoration: const InputDecoration(
-                    labelText: 'Yandex link',
+                    labelText: 'Vimeo link',
                     hintText: 'Оставьте пустым, чтобы очистить',
                     border: OutlineInputBorder(),
                   ),
@@ -716,7 +716,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                   (
                     youtubeLink: youtubeLinkController.text.trim(),
                     vkLink: vkLinkController.text.trim(),
-                    yandexLink: yandexLinkController.text.trim(),
+                    vimeoLink: vimeoLinkController.text.trim(),
                   ),
                 );
               },
@@ -735,7 +735,7 @@ class CourseDetailsScreen extends ConsumerWidget {
       await notifier.updateCourseMeta(
         youtubeLink: result.youtubeLink,
         vkLink: result.vkLink,
-        yandexLink: result.yandexLink,
+        vimeoLink: result.vimeoLink,
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

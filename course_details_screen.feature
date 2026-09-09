@@ -40,7 +40,7 @@ Feature: Управление словами внутри курса в адми
       | поле      | ожидаемое значение |
       | title     | "Новый заголовок"  |
       | displayed | true               |
-    И остальные поля документа (description, icon, imagePath, instagram, male_test, youtube, youtube_link, vk_link, yandex_link, words, id) остаются без изменений
+    И остальные поля документа (description, icon, imagePath, instagram, male_test, youtube, youtube_link, vk_link, vimeo_link, yandex_link, words, id) остаются без изменений
 
   Сценарий: Редактирование ссылок блока "Видео урок"
     Допустим в коллекции "courses" существует документ с id "course_1"
@@ -52,18 +52,18 @@ Feature: Управление словами внутри курса в адми
       | поле         | новое значение                            |
       | youtube_link | "https://youtube.com/watch?v=lesson123" |
       | vk_link      | "https://vkvideo.ru/video-1_2"          |
-      | yandex_link  | "https://disk.yandex.ru/i/example"      |
+      | vimeo_link   | "https://vimeo.com/lesson123"           |
     И сохраняет изменения
     Тогда приложение обновляет документ "courses/course_1" с новыми значениями полей:
       | поле         | ожидаемое значение                        |
       | youtube_link | "https://youtube.com/watch?v=lesson123" |
       | vk_link      | "https://vkvideo.ru/video-1_2"          |
-      | yandex_link  | "https://disk.yandex.ru/i/example"      |
-    И остальные поля документа (title, description, displayed, icon, imagePath, instagram, male_test, youtube, words, id) остаются без изменений
+      | vimeo_link   | "https://vimeo.com/lesson123"           |
+    И остальные поля документа (title, description, displayed, icon, imagePath, instagram, male_test, youtube, yandex_link, words, id) остаются без изменений
 
   Сценарий: Очистка ссылок блока "Видео урок"
     Допустим в коллекции "courses" существует документ с id "course_1"
-    И у курса "course_1" заполнены поля "youtube_link", "vk_link" и "yandex_link"
+    И у курса "course_1" заполнены поля "youtube_link", "vk_link" и "vimeo_link"
     Когда админ открывает редактирование блока "Видео урок"
     И очищает одно или несколько полей ссылок
     И сохраняет изменения
@@ -194,9 +194,10 @@ Feature: Управление словами внутри курса в адми
       | male_test   |
       | youtube     |
       | youtube_link |
-      | vk_link     |
-      | yandex_link |
-      | words       |
+      | vk_link      |
+      | vimeo_link   |
+      | yandex_link  |
+      | words        |
     И поле "words" остаётся массивом объектов со структурой:
       | arabic      |
       | translation |

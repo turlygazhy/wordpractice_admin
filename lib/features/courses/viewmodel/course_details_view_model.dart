@@ -115,18 +115,21 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
     String? youtubeLink,
     String? vkLink,
     String? yandexLink,
+    String? vimeoLink,
   }) async {
     final hasTitleUpdate = title != null;
     final hasDisplayedUpdate = displayed != null;
     final hasYoutubeLinkUpdate = youtubeLink != null;
     final hasVkLinkUpdate = vkLink != null;
     final hasYandexLinkUpdate = yandexLink != null;
+    final hasVimeoLinkUpdate = vimeoLink != null;
 
     if (!hasTitleUpdate &&
         !hasDisplayedUpdate &&
         !hasYoutubeLinkUpdate &&
         !hasVkLinkUpdate &&
-        !hasYandexLinkUpdate) {
+        !hasYandexLinkUpdate &&
+        !hasVimeoLinkUpdate) {
       return;
     }
 
@@ -142,6 +145,7 @@ class CourseDetailsViewModel extends StateNotifier<CourseDetailsState> {
         youtubeLink: hasYoutubeLinkUpdate ? youtubeLink.trim() : null,
         vkLink: hasVkLinkUpdate ? vkLink.trim() : null,
         yandexLink: hasYandexLinkUpdate ? yandexLink.trim() : null,
+        vimeoLink: hasVimeoLinkUpdate ? vimeoLink.trim() : null,
       );
     } catch (e) {
       state = state.copyWith(error: e);

@@ -98,6 +98,7 @@ class CourseService {
       youtubeLink: '',
       vkLink: '',
       yandexLink: '',
+      vimeoLink: '',
       words: const [],
     ).toMap();
 
@@ -113,6 +114,7 @@ class CourseService {
     String? youtubeLink,
     String? vkLink,
     String? yandexLink,
+    String? vimeoLink,
   }) async {
     final updateData = <String, dynamic>{};
     if (title != null) {
@@ -129,6 +131,9 @@ class CourseService {
     }
     if (yandexLink != null) {
       updateData['yandex_link'] = yandexLink;
+    }
+    if (vimeoLink != null) {
+      updateData['vimeo_link'] = vimeoLink;
     }
     if (updateData.isEmpty) return;
 
