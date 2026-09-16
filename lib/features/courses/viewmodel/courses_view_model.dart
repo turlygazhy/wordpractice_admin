@@ -31,8 +31,13 @@ class CoursesViewModel extends StateNotifier<CoursesState> {
     _subscription?.cancel();
     _subscription = _service.watchCourses(_filter.description).listen(
       (courses) {
+        final sortedCourses = [...courses]
+          ..sort(
+            (a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()),
+          );
+
         state = state.copyWith(
-          courses: courses,
+          courses: sortedCourses,
           isLoading: false,
           error: null,
         );
@@ -105,4 +110,3 @@ class CoursesViewModel extends StateNotifier<CoursesState> {
     super.dispose();
   }
 }
-
